@@ -84,3 +84,94 @@ class Dataset:
         mode = self.get_mode()
         mean = np.mean(self.X, axis=0)
         return np.mean(np.abs(self.X - mode) ** 2, axis=0) - np.abs(mean - mode) ** 2
+    
+    def get_median(self) -> np.ndarray:
+        """
+        Returns the median of each feature
+        Returns
+        -------
+        numpy.ndarray (n_features)
+        """
+        return np.median(self.X, axis=0)
+    
+    def get_min(self) -> np.ndarray:
+        """
+        Returns the minimum of each feature
+        Returns
+        -------
+        numpy.ndarray (n_features)
+        """
+        return np.nanmin(self.X, axis=0)
+
+    def get_max(self) -> np.ndarray:
+        """
+        Returns the maximum of each feature
+        Returns
+        -------
+        numpy.ndarray (n_features)
+        """
+        return np.nanmax(self.X, axis=0)
+
+
+    # Methods
+    
+    def count_nulls(self):
+        null_counts = {}
+        for i, feature in enumerate(self.features):
+            null_counts[feature] = np.sum(pd.isnull(self.X[:, i]))
+            
+        null_counts[self.label] = np.sum(pd.isnull(self.y))
+        return null_counts
+    
+
+
+    
+    """
+    The method checks the type of each feature and determines whether it is numerical or string. If the feature is numerical, it uses the mean value to replace nulls.
+    If the feature is string, it uses the mode to replace nulls. If a feature has mixed data types, the method will raise an error.
+    """
+    def replace_nulls(self, strategy='most_frequent'):
+        null_counts = self.count_nulls()
+        for i, feature in enumerate(self.features):
+            if null_counts[feature] > 0:
+                if strategy == 'most_frequent':
+                    non_null_values = self.X[:, i][~pd.isnull(self.X[:, i])]
+                    if len(non_null_values) > 0:
+                        most_frequent_value = pd.Series(non_null_values).mode()[0]
+                    else:
+                        most_frequent_value = None
+                    self.X[:, i][pd.isnull(self.X[:, i])] = most_frequent_value
+                elif strategy == 'mean':
+                    non_null_values = [x for x in self.X[:, i] if pd.notna(x)]
+                    if len(non_null_values) > 0:
+                        mean_value = np.mean(non_null_values)
+                    else:
+                        mean_value = None
+                    self.X[:, i][pd.isnull(self.X[:, i])] = mean_value
+
+
+def main():
+    # Create a new dataset instance and read in a CSV file
+    dataset = Dataset()
+    dataset.read_csv('../data/sample.csv')
+
+    # Replace null values with the most frequent value
+    # dataset.replace_nulls()
+
+    # Print some basic statistics about the dataset
+    print("Number of instances:", len(dataset))
+    print("Number of features:", len(dataset.features))
+    print("Feature names:", dataset.features)
+    print("Label name:", dataset.label)
+    print("X: ", dataset.X, "\n")
+    print("y: ", dataset.y, "\n")
+    
+    # tratamento de nulos
+    print("Null value counts before:", dataset.count_nulls(), "\n")
+    dataset.replace_nulls()
+    print("Null value counts after:", dataset.count_nulls(), "\n")
+
+    print("Description of features:")
+    print(dataset.describe())
+
+main()
