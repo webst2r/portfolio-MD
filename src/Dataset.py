@@ -153,7 +153,7 @@ class Dataset:
 def main():
     # Create a new dataset instance and read in a CSV file
     dataset = Dataset()
-    dataset.read_csv('../data/sample.csv')
+    dataset.read_csv('../datasets/sample.csv')
 
     # Replace null values with the most frequent value
     # dataset.replace_nulls()
