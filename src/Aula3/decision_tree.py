@@ -163,3 +163,129 @@ class DecisionTreeClassifier:
         else: # GAIN RATIO
             best_feature_index, best_threshold = self._choose_best_feature_gain_ratio(X, y)
         return best_feature_index, best_threshold
+
+    def _choose_best_feature_entropy(self, X, y):
+        best_feature_index = None
+        best_threshold = None
+        best_info_gain = -1
+
+        n_samples, n_features = X.shape
+        H_parent = self._entropy(y)
+
+        for feature_index in range(n_features):
+            # ordena as amostras com base no valor do atributo
+            X_feature = X[:, feature_index]
+            sorted_idx = X_feature.argsort()
+            X_sorted = X[sorted_idx]
+            y_sorted = y[sorted_idx]
+
+            # encontra os possíveis pontos de divisão
+            split_idx = np.where(y_sorted[:-1] != y_sorted[1:])[0] + 1
+            if len(split_idx) == 0:
+                continue
+
+            # calcula a entropia para cada ponto de divisão
+            for threshold in X_sorted[split_idx]:
+                y_left = y_sorted[X_sorted <= threshold]
+                y_right = y_sorted[X_sorted > threshold]
+                n_left = len(y_left)
+                n_right = len(y_right)
+                H_children = (n_left / n_samples) * self._entropy(y_left) + (n_right / n_samples) * self._entropy(y_right)
+                info_gain = H_parent - H_children
+
+                # atualiza o melhor atributo e ponto de divisão
+                if info_gain > best_info_gain:
+                    best_feature_index = feature_index
+                    best_threshold = threshold
+                    best_info_gain = info_gain
+
+        return best_feature_index, best_threshold
+
+
+    def _choose_best_feature_gini(self, X, y):
+        best_score = 1.0
+        best_feature_index = None
+        best_threshold = None
+        n_samples, n_features = X.shape
+
+        for feature_index in range(n_features):
+            thresholds = np.unique(X[:, feature_index])
+            for threshold in thresholds:
+                left_indices = X[:, feature_index] <= threshold
+                y_left = y[left_indices]
+                y_right = y[~left_indices]
+
+                if len(y_left) == 0 or len(y_right) == 0:
+                    continue
+
+                left_probabilities = np.array([len(y_left[y_left == c]) / len(y_left) for c in range(self.n_classes)])
+                right_probabilities = np.array([len(y_right[y_right == c]) / len(y_right) for c in range(self.n_classes)])
+
+                score = self._gini_impurity(left_probabilities, right_probabilities, len(y_left), len(y_right))
+
+                if score < best_score:
+                    best_score = score
+                    best_feature_index = feature_index
+                    best_threshold = threshold
+
+        return best_feature_index, best_threshold
+
+        
+
+
+    def _choose_best_feature_gain_ratio(self, X, y):
+        # escolhe o melhor atributo com base na razão de ganho
+        best_feature = None
+        best_gain_ratio = -1
+        
+        # calcula o ganho de informação de cada atributo
+        for feature_index in range(self.n_features):
+            gain_ratio = self._information_gain_ratio(X, y, feature_index)
+            if gain_ratio > best_gain_ratio:
+                best_feature = feature_index
+                best_gain_ratio = gain_ratio
+        
+        return best_feature
+
+
+    def _most_common_class(self, y):
+        # calcula a classe mais frequente
+        counter = collections.Counter(y)
+        most_common = counter.most_common(1)[0][0]
+        return most_common
+
+
+
+def main():
+    # exemplo de conjunto de dados
+    X_train = np.array([[1, 2], [2, 1], [2, 3], [3, 2], [4, 2], [3, 3], [2, 2], [3, 1]])
+    y_train = np.array([0, 0, 1, 1, 1, 0, 0, 1])
+
+    X_val = np.array([[1, 3], [4, 1], [2, 3], [3, 3]])
+    y_val = np.array([1, 1, 0, 1])
+
+
+    X_test = np.array([[1, 1], [4, 3], [3, 4], [2, 1]])
+
+    # cria o modelo de árvore de decisão com os hiperparâmetros escolhidos
+    dtc = DecisionTreeClassifier(max_depth=3, min_samples_split=2, min_samples_leaf=1, criterion='gini', prune=None, size=None, independence=None)
+
+    # treina o modelo com o conjunto de dados de treinamento
+    dtc.fit(X_train, y_train)
+
+    # previsão das classes dos dados de teste
+    y_pred = dtc.predict(X_test)
+
+    # fazer reduced error pruning na decision tree
+    #dtc.reduced_error_pruning(X_val, y_val)
+
+    # fazer pessimistic error pruning na decision tree
+    #dtc.pessimistic_error_pruning(X_val, y_val)
+
+
+    # compara as classes reais com as classes previstas
+    #print("Classes reais: ", [1, 1, 0, 0])
+    print("Classes previstas: ", y_pred)
+
+
+main()
