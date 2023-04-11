@@ -47,3 +47,36 @@ class Apriori:
                     unionset = ''.join(sorted(unionset))  # Sort itemset by dict order
                     candidate.append(unionset)
         return candidate
+
+    def _apriori_prune(self, itemset):
+        """Prune infrequent itemsets"""
+        frequent_itemset = []
+        for item in itemset:
+            if itemset[item] >= self.minsupport:
+                frequent_itemset.append(item)
+        return sorted(frequent_itemset)
+
+    def _apriori_count_subset(self, itemset):
+        """Count the support of candidate itemsets"""
+        Lk = {}
+        with open('src/Aula5/example.txt') as file:
+            for l in file:
+                l = str(l.split())
+                for i in range(len(itemset)):
+                    key = itemset[i]
+                    if key not in Lk:
+                        Lk[key] = 0
+                    flag = True
+                    for k in key:
+                        if k not in l:
+                            flag = False
+                    if flag:
+                        Lk[key] += 1
+        return Lk
+
+
+def main():
+    apriori = Apriori(minsupport=3)
+    apriori.fit('src/Aula5/example.txt')
+
+main()
