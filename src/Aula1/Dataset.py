@@ -1,6 +1,6 @@
-import pandas as pd
 import numpy as np
-
+import pandas as pd
+from typing import Sequence
 
 class Dataset:
     
@@ -15,7 +15,13 @@ class Dataset:
             return len(self.X)
         else:
             return 0
-         
+    
+    def shape(self):
+        """
+        Returns the shape of the dataset as a tuple of the form (n_samples, n_features)
+        """
+        return self.X.shape[0], self.X.shape[1]
+
 
     def describe(self):
         if self.X is not None:
@@ -50,6 +56,20 @@ class Dataset:
         df = pd.DataFrame(data=np.column_stack((self.X, self.y)), columns=self.features+[self.label])
         df.to_tsv(filename, index=False)
 
+    def to_dataframe(self) -> pd.DataFrame:
+        """
+        Converts the dataset to a pandas DataFrame
+
+        Returns
+        -------
+        pandas.DataFrame
+        """
+        if self.y is None:
+            return pd.DataFrame(self.X, columns=self.features)
+        else:
+            df = pd.DataFrame(self.X, columns=self.features)
+            df[self.label] = self.y
+            return df
 
     # Getters & Setters
     def get_X(self):
