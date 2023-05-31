@@ -20,7 +20,7 @@ class Dataset:
         """
         Returns the shape of the dataset as a tuple of the form (n_samples, n_features)
         """
-        return self.X.shape[0], self.X.shape[1]
+        return self.X.shape
 
 
     def describe(self):
@@ -29,13 +29,20 @@ class Dataset:
             return df.describe()
         else:
             return None
+    
+    def from_random(self, n_samples: int, n_features: int, n_classes: int = 2, features: Sequence[str] = None, label: str = None):
+        """
+        Creates a Dataset object from random data
+        """
+        X = np.random.rand(n_samples, n_features)
+        y = np.random.randint(0, n_classes, n_samples)
+        return Dataset(X, y, features=features, label=label)
 
-    # Read
-    """
-    This implementation uses the dtype=object argument when creating the NumPy array from the Pandas DataFrame.
-    This ensures that the array can contain elements of different types, including strings.
-    """
     def read_csv(self, filename, label_col=-1):
+        """
+        This implementation uses the dtype=object argument when creating the NumPy array from the Pandas DataFrame.
+        This ensures that the array can contain elements of different types, including strings.
+        """
         df = pd.read_csv(filename)
         self.features = list(df.columns.values[:-1])
         self.label = df.columns.values[-1]
@@ -46,8 +53,7 @@ class Dataset:
       
     def read_tsv(self, filename, label=None):
         self.read_csv(filename,label,'\t')
-    
-    # Write
+ 
     def write_csv(self,filename):
         df = pd.DataFrame(data=np.column_stack((self.X, self.y)), columns=self.features+[self.label])
         df.to_csv(filename, index=False)
@@ -55,6 +61,20 @@ class Dataset:
     def write_tsv(self,filename):
         df = pd.DataFrame(data=np.column_stack((self.X, self.y)), columns=self.features+[self.label])
         df.to_tsv(filename, index=False)
+
+    def from_dataframe(self, df: pd.DataFrame, label: str = None):
+        """
+        Creates a Dataset object from a pandas DataFrame
+        """
+        self.features = df.columns.tolist()
+        self.label = label
+        
+        if label:
+            self.X = df.drop(label, axis=1).values
+            self.y = df[label].values
+        else:
+            self.X = df.values
+            self.y = None
 
     def to_dataframe(self) -> pd.DataFrame:
         """
@@ -64,12 +84,9 @@ class Dataset:
         -------
         pandas.DataFrame
         """
-        if self.y is None:
-            return pd.DataFrame(self.X, columns=self.features)
-        else:
-            df = pd.DataFrame(self.X, columns=self.features)
-            df[self.label] = self.y
-            return df
+        data = np.column_stack((self.X, self.y)) if self.y is not None else self.X
+        columns = self.features + [self.label] if self.label else self.features
+        return pd.DataFrame(data=data, columns=columns)
 
     # Getters & Setters
     def get_X(self):
@@ -86,6 +103,17 @@ class Dataset:
 
     def get_label(self):
         return self.label
+    
+    def get_classes(self) -> np.ndarray:
+        """
+        Returns the unique classes in the dataset
+        Returns
+        -------
+        numpy.ndarray (n_classes)
+        """
+        if self.y is None:
+            raise ValueError("Dataset does not have a label")
+        return np.unique(self.y)
     
     def get_mode(self) -> np.ndarray:
         """
@@ -134,9 +162,7 @@ class Dataset:
         """
         return np.nanmax(self.X, axis=0)
 
-
     # Methods
-    
     def count_nulls(self):
         null_counts = {}
         for i, feature in enumerate(self.features):
@@ -145,14 +171,13 @@ class Dataset:
         null_counts[self.label] = np.sum(pd.isnull(self.y))
         return null_counts
     
-
-
-    
-    """
-    The method checks the type of each feature and determines whether it is numerical or string. If the feature is numerical, it uses the mean value to replace nulls.
-    If the feature is string, it uses the mode to replace nulls. If a feature has mixed data types, the method will raise an error.
-    """
     def replace_nulls(self, strategy='most_frequent'):
+        """
+        Determines if a feature is numerical or string.
+        If the feature is numerical, it uses the mean value to replace nulls.
+        If the feature is string, it uses the mode to replace nulls.
+        If a feature has mixed data types, the method will raise an error.
+        """
         null_counts = self.count_nulls()
         for i, feature in enumerate(self.features):
             if null_counts[feature] > 0:
@@ -177,24 +202,33 @@ def main():
     dataset = Dataset()
     dataset.read_csv('../../datasets/sample.csv')
 
-    # Replace null values with the most frequent value
-    # dataset.replace_nulls()
-
     # Print some basic statistics about the dataset
     print("Number of instances:", len(dataset))
     print("Number of features:", len(dataset.features))
+    print("Shape: ", dataset.shape())
     print("Feature names:", dataset.features)
     print("Label name:", dataset.label)
     print("X: ", dataset.X, "\n")
     print("y: ", dataset.y, "\n")
     
-    # tratamento de nulos
+    # Tratamento de valores nulos
     print("Null value counts before:", dataset.count_nulls(), "\n")
     dataset.replace_nulls()
     print("Null value counts after:", dataset.count_nulls(), "\n")
 
     print("Description of features:")
     print(dataset.describe())
+
+    # Create a new dataset from a pandas DataFrame
+    df = pd.read_csv('../../datasets/sample.csv')
+    new_dataset = Dataset()
+    new_dataset.from_dataframe(df)
+
+    # Convert the dataset back to a pandas DataFrame
+    df_new = new_dataset.to_dataframe()
+    print("Converted DataFrame:")
+    print(df_new)
+
 
 if __name__ == "__main__":
     main()
